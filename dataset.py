@@ -11,7 +11,7 @@ class RainData(Data.Dataset):
     def __init__(self, train=True):
         super(RainData, self).__init__()
 
-        root = r'E:\data\cropped'
+        root = '/home/chauncy/data/cropped'
 
         self.train_data = []
 
