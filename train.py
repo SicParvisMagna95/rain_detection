@@ -5,10 +5,11 @@ import torch.cuda as cuda
 import torch.utils.data as Data
 import torch.nn as nn
 import torch.optim as Optim
+import matplotlib.pyplot as plt
 from tensorboardX import SummaryWriter
 
 EPOCHS = 100
-BATCH_SIZE = 512
+BATCH_SIZE = 500
 
 
 if __name__ == '__main__':
@@ -26,12 +27,14 @@ if __name__ == '__main__':
     test_data_loader = Data.DataLoader(input_test_data,batch_size=BATCH_SIZE,shuffle=False)
 
 
-
     optimizer = Optim.Adam(net.parameters())
 
     loss_func = nn.CrossEntropyLoss()
 
-    print(net)
+    # print(net)
+    accuracy,accuracy_old = 0,0
+    train_loss_curve,val_loss_curve = [],[]
+
 
     for epoch in range(EPOCHS):
         net.train()
@@ -46,12 +49,13 @@ if __name__ == '__main__':
             img = img.float()
             label = label.long()
 
+
             if gpu_avail:
                 img = img.to('cuda')
                 label = label.to('cuda')
 
-            with SummaryWriter(log_dir='./model_graph', comment='my_vgg') as w:
-                w.add_graph(net, img)
+            # with SummaryWriter(log_dir='./model_graph', comment='my_vgg') as w:
+            #     w.add_graph(net, img)
 
             optimizer.zero_grad()
 
@@ -63,31 +67,63 @@ if __name__ == '__main__':
             optimizer.step()
 
             loss_train_epoch += loss.item() * BATCH_SIZE
+            if i % 100 == 0:
+                print(f"Epoch {epoch}\tIteration {i}\tTrain loss: {loss.item()}")
 
-            print(f"Batch {i}\tTrain loss: {loss.item()}")
+
+        # evaluation
+        net.eval()
+
+        correct = 0
+        for j, (img_val, label_val) in enumerate(test_data_loader):
+
+            img_val = img_val.float()
+            label_val = label_val.long()
+
+            if gpu_avail:
+                img_val = img_val.to("cuda")
+                label_val = label_val.to("cuda")
+            out_val = net(img_val)      # (Batch_size, 2)
+
+            # output the accuracy
+            out_class = torch.argmax(out_val, dim=1)
+            count = torch.sum(out_class==label_val).item()
+            # print(count)
+            correct += count
+
+            loss_val = loss_func(out_val, label_val)
+            loss_test_epoch += loss_val.item() * BATCH_SIZE
+
+        loss_total_train = loss_train_epoch/len(input_train_data.train_data)
+        loss_total_val = loss_test_epoch/len(input_test_data.train_data)
+
+        accuracy = correct/len(input_test_data.train_data)
+
+        if accuracy_old<accuracy:
+            accuracy_old = accuracy
+            torch.save({'model':net,
+                        'epoch':epoch,
+                        'batch_size':BATCH_SIZE,
+                        },f'./model_saved/accuracy_{accuracy}.pkl')
+
+        # record train_loss,val_loss
+        train_loss_curve.append(loss_total_train)
+        val_loss_curve.append(loss_total_val)
 
 
-        # # evaluation
-        # net.eval()
-        #
-        # for j, (img_val, label_val) in enumerate(test_data_loader):
-        #
-        #     img_val = img_val.float()
-        #     label_val = label_val.long()
-        #
-        #     if gpu_avail:
-        #         img_val = img_val.to("cuda")
-        #         label_val = label_val.to("cuda")
-        #     out_val = net(img_val)
-        #     loss_val = loss_func(out_val, label_val)
-        #     loss_test_epoch += loss_val.item() * BATCH_SIZE
-        #
-        # print(f'Train loss: {loss_train_epoch/train_data_loader.__len__()}\t'
-        #       f'Val loss: {loss_test_epoch/test_data_loader.__len__()}')
+        print(f'Epoch {epoch} finished! Train loss: {loss_total_train}\t'
+              f'Val loss: {loss_total_val}\t'
+              f'Accuracy: {accuracy}')
+        print()
         pass
 
-
-
+    plt.plot(range(1,EPOCHS+1), train_loss_curve, label='train loss')
+    plt.plot(range(1,EPOCHS+1), val_loss_curve, label='val loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(f'./loss/loss_epoch{EPOCHS}')
+    plt.show()
 
 
 

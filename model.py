@@ -10,19 +10,11 @@ cfg = {
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
- 'rain': [32, 32, 'M', 64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 256, 256, 'M'],
+'my_vgg': [32, 32, 'M', 64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 256, 256, 'M'],
+'my_mobilenet':[],
 }
 
-model_urls = {
-    'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
-    'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',
-    'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth',
-    'vgg19': 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth',
-    'vgg11_bn': 'https://download.pytorch.org/models/vgg11_bn-6002323d.pth',
-    'vgg13_bn': 'https://download.pytorch.org/models/vgg13_bn-abd245e5.pth',
-    'vgg16_bn': 'https://download.pytorch.org/models/vgg16_bn-6c64b313.pth',
-    'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
-}
+
 
 
 class VGG(nn.Module):
@@ -32,6 +24,7 @@ class VGG(nn.Module):
         self.features = features
         self.conv_sub = nn.Conv2d(in_channels=256, out_channels=2, kernel_size=1)
         self.softmax = nn.Softmax2d()
+        # self.linear = nn.Linear(256,10)
 
         if init_weights:
             self._initialize_weights()
@@ -39,11 +32,8 @@ class VGG(nn.Module):
     def forward(self, x):
         x = self.features(x)    # (Batch_size, 256, 1, 1)
         x = self.conv_sub(x)    # (Batch_size, 2, 1, 1)
-        x = self.softmax(x)     # (Batch_size, 2, 1, 1)
-                                # value_range over channels (0.0, 1.0)
-        x = torch.squeeze(x,2)
-        x = torch.squeeze(x,2)  # (Batch_size, 2)
-        # x = torch.argmax(x, dim=1)  # (16)
+        x = torch.squeeze(x)    # (Batch_size, 2)
+
         return x
 
     def _initialize_weights(self):
@@ -78,6 +68,10 @@ def make_layers(cfg, batch_norm=False):
 
 def my_vgg(batch_norm=True, **kwargs):\
 
-    return VGG(make_layers(cfg['rain'], batch_norm=batch_norm), **kwargs)
+    return VGG(make_layers(cfg['my_vgg'], batch_norm=batch_norm), **kwargs)
+
+
+
+
 
 

@@ -26,6 +26,7 @@ class RainData(Data.Dataset):
             imdb = open(file_train, 'rb')
             data = pickle.load(imdb)
             self.train_data += data
+            imdb.close()
         pass
 
     def __len__(self):
