@@ -6,8 +6,14 @@ import torch.utils.data as Data
 import torch.nn as nn
 import torch.optim as Optim
 import matplotlib.pyplot as plt
+import os
 from tensorboardX import SummaryWriter
 
+# modify
+# root path in dataset.py
+#
+
+# hyper-parameter
 EPOCHS = 100
 BATCH_SIZE = 500
 
@@ -16,22 +22,37 @@ if __name__ == '__main__':
     # gpu
     gpu_avail = cuda.is_available()
 
+    # model
     net = model.my_vgg()
+
+    names = net.named_parameters()
+    for name,p in names:
+        print(name)
+        pass
+
     if gpu_avail:
         net = net.to("cuda")
 
+    # make directory
+    if not os.path.exists('./loss'):
+        os.makedirs('./loss')
+    if not os.path.exists('./model_saved'):
+        os.makedirs('./model_saved')
+
+    # data
     input_train_data = dataset.RainData(train=True)
     input_test_data = dataset.RainData(train=False)
 
     train_data_loader = Data.DataLoader(input_train_data,batch_size=BATCH_SIZE,shuffle=True)
     test_data_loader = Data.DataLoader(input_test_data,batch_size=BATCH_SIZE,shuffle=False)
 
-
+    # optimizer
     optimizer = Optim.Adam(net.parameters())
 
+    # loss function
     loss_func = nn.CrossEntropyLoss()
 
-    # print(net)
+    # initialize some variables
     accuracy,accuracy_old = 0,0
     train_loss_curve,val_loss_curve = [],[]
 
@@ -101,6 +122,8 @@ if __name__ == '__main__':
 
         if accuracy_old<accuracy:
             accuracy_old = accuracy
+
+
             torch.save({'model':net,
                         'epoch':epoch,
                         'batch_size':BATCH_SIZE,
@@ -122,20 +145,6 @@ if __name__ == '__main__':
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.legend()
+
     plt.savefig(f'./loss/loss_epoch{EPOCHS}')
     plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

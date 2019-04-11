@@ -37,10 +37,3 @@ class RainData(Data.Dataset):
         label = float((self.train_data[item][1]))
 
         return img, label
-
-
-
-
-
-
-
