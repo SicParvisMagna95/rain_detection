@@ -7,14 +7,15 @@ import torch.nn as nn
 import torch.optim as Optim
 import matplotlib.pyplot as plt
 import os
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 
 # modify
 # root path in dataset.py
 #
 
 # hyper-parameter
-EPOCHS = 100
+os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7"
+EPOCHS = 20
 BATCH_SIZE = 500
 
 
@@ -23,12 +24,16 @@ if __name__ == '__main__':
     gpu_avail = cuda.is_available()
 
     # model
-    net = model.my_vgg()
+    net = model.Ztk_vgg()
 
-    names = net.named_parameters()
-    for name,p in names:
-        print(name)
-        pass
+    if cuda.device_count()>1:
+        print('cuda count:',cuda.device_count())
+        net = nn.DataParallel(net)
+
+    # names = net.named_parameters()
+    # for name,p in names:
+    #     print(name)
+    #     pass
 
     if gpu_avail:
         net = net.to("cuda")
@@ -55,7 +60,6 @@ if __name__ == '__main__':
     # initialize some variables
     accuracy,accuracy_old = 0,0
     train_loss_curve,val_loss_curve = [],[]
-
 
     for epoch in range(EPOCHS):
         net.train()
@@ -84,6 +88,8 @@ if __name__ == '__main__':
                                             # value_range over channels (0.0, 1.0)
 
             loss = loss_func(out, label)
+
+
             loss.backward()
             optimizer.step()
 

@@ -7,11 +7,12 @@ import pickle
 import numpy as np
 
 
+
 class RainData(Data.Dataset):
     def __init__(self, train=True):
         super(RainData, self).__init__()
 
-        root = '/home/chauncy/data/cropped'
+        root = '/home/zhangtk/data/cropped_img/'
 
         self.train_data = []
 
