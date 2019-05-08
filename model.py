@@ -79,10 +79,10 @@ def my_vgg(batch_norm=True, **kwargs):\
 
 class Block1(nn.Module):
     # kernel_size=3*3   pad=1
-    def __init__(self, in_channel, out_channel, stride=1):
+    def __init__(self, in_channel, out_channel, stride=1, padding=1):
         super(Block1,self).__init__()
         self.conv = nn.Conv2d(in_channels=in_channel,out_channels=out_channel,
-                              kernel_size=3,stride=stride,padding=1)
+                              kernel_size=3,stride=stride,padding=padding)
         self.bn = nn.BatchNorm2d(out_channel)
         self.relu = nn.ReLU(inplace=True)
 
@@ -159,22 +159,23 @@ class Ztk_vgg(nn.Module):
 """"""""""""""""""""""""""""""""""""
 
 class Depthwise_separable_conv(nn.Module):
-    def __init__(self, in_channel, out_channel, stride=1 ,kernel_size=3):
+    def __init__(self, in_channel, out_channel, stride=1 ,kernel_size=3, padding=1):
         super(Depthwise_separable_conv,self).__init__()
 
         self.depthwise = nn.Conv2d(in_channels=in_channel, out_channels=in_channel,
-                                   kernel_size=kernel_size, padding=1,
+                                   kernel_size=kernel_size, padding=padding,stride=stride,
                                    groups=in_channel)
         self.pointwise = nn.Conv2d(in_channels=in_channel, out_channels=out_channel, kernel_size=1)
-        self.bn = nn.BatchNorm2d(in_channel)
+        self.bn_in = nn.BatchNorm2d(in_channel)
+        self.bn_out = nn.BatchNorm2d(out_channel)
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
         x = self.depthwise(x)
-        x = self.bn(x)
+        x = self.bn_in(x)
         x = self.relu(x)
         x = self.pointwise(x)
-        x = self.bn(x)
+        x = self.bn_out(x)
         x = self.relu(x)
 
         return x
@@ -184,18 +185,20 @@ class MobileNet(nn.Module):
     def __init__(self, in_channel=3, out_channel=1000):
         super(MobileNet, self).__init__()
 
-        self.conv1 = Block1(in_channel,32,stride=2)
-        self.depth_point_conv1 = Depthwise_separable_conv(32,64,stride=1)
-        self.depth_point_conv2 = Depthwise_separable_conv(64,128,stride=2)
-        self.depth_point_conv3 = Depthwise_separable_conv(128,128,stride=1)
-        self.depth_point_conv4 = Depthwise_separable_conv(128,256,stride=2)
-        self.depth_point_conv5 = Depthwise_separable_conv(256,256,stride=1)
-        self.depth_point_conv6 = Depthwise_separable_conv(256,512,stride=2)
-        self.depth_point_conv7_block = [Depthwise_separable_conv(512,512,stride=1)]*5
-        self.depth_point_conv8 = Depthwise_separable_conv(512,1024,stride=2)
-        self.depth_point_conv9 = Depthwise_separable_conv(1024,1024,stride=2)
+        self.conv1 = Block1(in_channel,32,stride=2,padding=1)                           # /2
+        self.depth_point_conv1 = Depthwise_separable_conv(32,64,stride=1,padding=1)     # unchanged
+        self.depth_point_conv2 = Depthwise_separable_conv(64,128,stride=2,padding=1)    # /2
+        # self.depth_point_conv2 = nn.AvgPool2d(kernel_size=2,stride=2)
+        self.depth_point_conv3 = Depthwise_separable_conv(128,128,stride=1,padding=1)   # unchanged
+        self.depth_point_conv4 = Depthwise_separable_conv(128,256,stride=1,padding=0)   # -2
+        self.depth_point_conv5 = Depthwise_separable_conv(256,256,stride=1,padding=1)   # unchanged
+        self.depth_point_conv6 = Depthwise_separable_conv(256,512,stride=1,padding=0)   # -2
+        self.depth_point_conv7_block = [Depthwise_separable_conv(512,512,stride=1,padding=1)]*5
 
-        self.average_pool = nn.AvgPool2d(kernel_size=7)  # 1*1*1024
+        self.depth_point_conv8 = Depthwise_separable_conv(512,1024,stride=1,padding=0)  # -2
+        self.depth_point_conv9 = Depthwise_separable_conv(1024,1024,stride=2,padding=1) # /2
+        # self.depth_point_conv9 = nn.AvgPool2d(kernel_size=2,stride=2)
+        self.conv1x1 = nn.Conv2d(1024,2,kernel_size=1)
 
         self.feature = nn.Sequential(self.conv1,
                                      self.depth_point_conv1,
@@ -204,24 +207,36 @@ class MobileNet(nn.Module):
                                      self.depth_point_conv4,
                                      self.depth_point_conv5,
                                      self.depth_point_conv6,
-                                     self.depth_point_conv7_block,
+                                     *self.depth_point_conv7_block,
                                      self.depth_point_conv8,
                                      self.depth_point_conv9,
-                                     self.average_pool
+                                     self.conv1x1
                                      )
+        self._initialize_weights()
+        # self.average_pool = nn.AvgPool2d(kernel_size=7)  # 1*1*1024
 
-        self.fc = nn.Linear(1024,out_channel)
-        self.softmax = nn.Softmax2d()
-
-        self.classifier = nn.Sequential(self.average_pool,self.fc,self.softmax)
+        # self.fc = nn.Linear(1024,out_channel)
+        # self.softmax = nn.Softmax()
+        # self.classifier = nn.Sequential(self.fc,self.softmax)
 
     def forward(self, x):
         x = self.feature(x)
-        x = x.view(x.size,-1)       # 1024
-        x = self.classifier(x)      # 1000
+        # x = x.view(-1, x.shape[1])       # 1024
+        # x = self.classifier(x)      # 1000
+        # x = self.fc(x)
+        # x = self.softmax(x)
+        x = torch.squeeze(x)
         return x
 
-
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
 
 

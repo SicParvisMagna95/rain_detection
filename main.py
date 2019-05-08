@@ -7,20 +7,25 @@ import torch.nn as nn
 import numpy as np
 import time
 import torch.cuda as cuda
+import glob
 
 if __name__ == '__main__':
 
     gpu_avail = cuda.is_available()
+    os.environ["CUDA_VISIBLE_DEVICES"] = "5"
 
     scale = 0.8
-    img_dir = r'E:\data\tag_rain\img_untagged\score_40000_50000\no_rain'
-    img_list = os.listdir(img_dir)
+    img_dir = '/home/zhangtk/data/test/2/'
+    # img_dir = r'E:\data\rain_full\rain_imgs\test\2'
+    # img_list = os.listdir(img_dir)
+    img_list_ = glob.glob(os.path.join(img_dir,'*.jpg'))
+    img_list = [os.path.basename(i) for i in img_list_]
+
     # save_dir = f'/home/zhangtk/data/test/0_test_ztkvgg1_{scale}/'
-    save_dir = os.path.join(img_dir, 'result_ztkvgg')
+    save_dir = os.path.join(img_dir, 'result_mobilenet_conv1x1_95')
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-
 
     start = time.time()
 
@@ -36,16 +41,18 @@ if __name__ == '__main__':
         img = torch.unsqueeze(img,dim=0)
         img = img.permute(0,3,1,2)
 
+
         if gpu_avail:
-            info = torch.load('./model_saved/accuracy_0.9768754516513349.pkl')
+            info = torch.load('./model_saved/mobilenet_conv1x1/accuracy_0.9507529149821292.pkl')
             img = img.to("cuda")
         else:
-            info = torch.load('./model_saved/accuracy_0.9768754516513349.pkl', map_location='cpu')
+            info = torch.load('./model_saved/mobilenet_conv1x1/accuracy_0.9507529149821292.pkl', map_location='cpu')
 
 
         net = info['model']
 
-        net = net.module
+        # net = net.module
+
 
         net = net.eval()
         # print(net)
@@ -53,6 +60,8 @@ if __name__ == '__main__':
         s = time.time()
 
         out = net(img)
+        # cv2.imshow('i',out[0,:,:].detach().cpu().numpy())
+        # cv2.waitKey()
         out = torch.unsqueeze(out, dim=0)
         out = nn.Softmax2d()(out)
         out = out[0,1,:,:]
@@ -60,6 +69,10 @@ if __name__ == '__main__':
         out = cv2.resize(out,(w,h))
         out = out*255
         # out = out[:,:,np.newaxis]
+        # cv2.imshow('abc',out)
+        # cv2.waitKey(0)
+
+        print(img_path)
 
         e = time.time()
         # print(e-s, ' s')
