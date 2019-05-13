@@ -12,17 +12,17 @@ import glob
 if __name__ == '__main__':
 
     gpu_avail = cuda.is_available()
-    os.environ["CUDA_VISIBLE_DEVICES"] = "5"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
     scale = 0.8
-    img_dir = '/home/zhangtk/data/test/2/'
+    img_dir = '/home/zhangtk/data/test/0/'
     # img_dir = r'E:\data\rain_full\rain_imgs\test\2'
     # img_list = os.listdir(img_dir)
     img_list_ = glob.glob(os.path.join(img_dir,'*.jpg'))
     img_list = [os.path.basename(i) for i in img_list_]
 
     # save_dir = f'/home/zhangtk/data/test/0_test_ztkvgg1_{scale}/'
-    save_dir = os.path.join(img_dir, 'result_mobilenet_conv1x1_95')
+    save_dir = os.path.join(img_dir, 'result_mobilenet_conv1x1_new_930')
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -43,10 +43,10 @@ if __name__ == '__main__':
 
 
         if gpu_avail:
-            info = torch.load('./model_saved/mobilenet_conv1x1/accuracy_0.9507529149821292.pkl')
+            info = torch.load('./model_saved_new/mobilenet_conv1x1/accuracy_0.9302765786860787.pkl')
             img = img.to("cuda")
         else:
-            info = torch.load('./model_saved/mobilenet_conv1x1/accuracy_0.9507529149821292.pkl', map_location='cpu')
+            info = torch.load('./model_saved_new/mobilenet_conv1x1/accuracy_0.9302765786860787.pkl', map_location='cpu')
 
 
         net = info['model']

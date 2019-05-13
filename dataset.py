@@ -12,7 +12,7 @@ class RainData(Data.Dataset):
     def __init__(self, train=True):
         super(RainData, self).__init__()
 
-        root = '/home/zhangtk/data/cropped_img/'
+        root = '/data/rain/rain_detection_train/cropped/'
 
         self.train_data = []
 
@@ -24,9 +24,16 @@ class RainData(Data.Dataset):
                               os.path.join(root, 'val_False', '32.imdb')]
 
         for file_train in data_path:
+        # for j in range(2):
             imdb = open(file_train, 'rb')
             data = pickle.load(imdb)
-            self.train_data += data
+            if 'True' in file_train:
+                self.train_data += [[i,1] for i in data]
+                # self.train_data += np.column_stack((data, np.ones(len(data),dtype=np.float)))
+            else:
+                self.train_data += [[i, 0] for i in data]
+                # print(0)
+                # self.train_data += np.column_stack((data, np.zeros(len(data),dtype=np.float)))
             imdb.close()
         pass
 
